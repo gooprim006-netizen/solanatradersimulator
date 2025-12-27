@@ -26,7 +26,6 @@
             backdrop-filter: blur(25px); height: calc(100vh - 40px);
         }
 
-        /* ЛЕВАЯ ПАНЕЛЬ С НОВЫМ ФОНОМ */
         .left-panel {
             background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), 
                         url('https://i.pinimg.com/736x/5b/9b/bc/5b9bbc07668441e4180cbd046979b99e.jpg') center/cover !important;
@@ -130,33 +129,33 @@
 </div>
 
 <script>
-
-// Функция для сохранения данных
-function saveGame() {
-    const dataToSave = {
-        bal: state.bal,
-        yield: state.yield,
-        user: state.user
-    };
-    localStorage.setItem('soltrader_save', JSON.stringify(dataToSave));
-}
-
-// Функция для загрузки данных
-function loadGame() {
-    const savedData = localStorage.getItem('soltrader_save');
-    if (savedData) {
-        const parsed = JSON.parse(savedData);
-        state.bal = parsed.bal;
-        state.yield = parsed.yield;
-        state.user = parsed.user;
-        updateUI();
-    }
-}
     const state = { 
         bal: 1.0, yield: 0, bet: 0.1, running: false, cashed: false, 
         candles: [], crashAt: 0, lastPrice: 1, 
-        elapsedTime: 0, lastFrameTime: 0 // Для фикса альтаба
+        elapsedTime: 0, lastFrameTime: 0
     };
+
+    // Функция для сохранения данных
+    function saveGame() {
+        const dataToSave = {
+            bal: state.bal,
+            yield: state.yield,
+            charImg: document.getElementById('char-img').src // Сохраняем картинку персонажа
+        };
+        localStorage.setItem('soltrader_save', JSON.stringify(dataToSave));
+    }
+
+    // Функция для загрузки данных
+    function loadGame() {
+        const savedData = localStorage.getItem('soltrader_save');
+        if (savedData) {
+            const parsed = JSON.parse(savedData);
+            state.bal = parsed.bal;
+            state.yield = parsed.yield;
+            if (parsed.charImg) document.getElementById('char-img').src = parsed.charImg;
+            updateUI();
+        }
+    }
     
     const degens = [{n:"Bandit", v:"118.3"}, {n:"Cented", v:"114.0"}, {n:"Cupsey", v:"75.4"}, {n:"Pain", v:"36.4"}, {n:"Casino", v:"34.1"}, {n:"Jijo", v:"30.6"}];
     const upgs = [
@@ -171,6 +170,8 @@ function loadGame() {
     ];
 
     window.onload = () => {
+        loadGame(); // Загружаем прогресс при открытии страницы
+
         const lb = document.getElementById('leaderboard');
         degens.forEach(d => lb.innerHTML += `<div class="row"><span style="color:var(--pink)">${d.n}</span><span style="color:var(--sol)">+${d.v} SOL</span></div>`);
         
@@ -178,7 +179,14 @@ function loadGame() {
         upgs.forEach(u => {
             const d = document.createElement('div'); d.className = 'upg-card';
             d.innerHTML = `<div>${u.n}</div><div style="color:var(--sol); margin-top:5px;">Cost: ${u.c} SOL (+${u.p}/s)</div>`;
-            d.onclick = () => { if(state.bal >= u.c) { state.bal -= u.c; state.yield += u.p; updateUI(); } };
+            d.onclick = () => { 
+                if(state.bal >= u.c) { 
+                    state.bal -= u.c; 
+                    state.yield += u.p; 
+                    updateUI(); 
+                    saveGame(); // Сохраняем после покупки
+                } 
+            };
             ul.appendChild(d);
         });
 
@@ -186,18 +194,36 @@ function loadGame() {
         estates.forEach(e => {
             const d = document.createElement('div'); d.className = 'upg-card';
             d.innerHTML = `<div>${e.n}</div><div style="color:var(--pink); margin-top:5px;">Cost: ${e.c} SOL</div>`;
-            d.onclick = () => { if(state.bal >= e.c) { state.bal -= e.c; document.getElementById('char-img').src = e.i; updateUI(); } };
+            d.onclick = () => { 
+                if(state.bal >= e.c) { 
+                    state.bal -= e.c; 
+                    document.getElementById('char-img').src = e.i; 
+                    updateUI(); 
+                    saveGame(); // Сохраняем после покупки жилья
+                } 
+            };
             el.appendChild(d);
         });
 
         document.getElementById('pnl-upload').onchange = (e) => {
             const reader = new FileReader();
-            reader.onload = (ev) => { document.getElementById('pnl-bg-div').style.backgroundImage = `url(${ev.target.result})`; };
+            reader.onload = (ev) => { 
+                document.getElementById('pnl-bg-div').style.backgroundImage = `url(${ev.target.result})`; 
+            };
             reader.readAsDataURL(e.target.files[0]);
         };
 
         setInterval(updateFeed, 2000);
-        setInterval(() => { if(state.yield > 0) { state.bal += state.yield; updateUI(); } }, 1000);
+        
+        // Интервал пассивного дохода и авто-сохранения
+        setInterval(() => { 
+            if(state.yield > 0) { 
+                state.bal += state.yield; 
+                updateUI(); 
+                saveGame(); // Сохраняем баланс каждую секунду
+            } 
+        }, 1000);
+
         document.getElementById('btn-ape').onclick = start;
         document.getElementById('btn-cash').onclick = cash;
         window.onresize = resize; resize();
@@ -209,29 +235,27 @@ function loadGame() {
         if(state.bal < b || state.running || b <= 0) return;
         state.bet = b; state.bal -= b; state.running = true; state.cashed = false;
         state.candles = []; state.lastPrice = 1; 
-        state.elapsedTime = 0; state.lastFrameTime = performance.now(); // Сброс времени
+        state.elapsedTime = 0; state.lastFrameTime = performance.now();
         state.crashAt = (1.1 + Math.pow(Math.random()*4, 2.1)).toFixed(2);
         document.getElementById('btn-ape').style.display = 'none';
         document.getElementById('btn-cash').style.display = 'block';
         document.getElementById('pnl-status').innerText = "LIVE TRADING... 📈";
+        saveGame(); // Сохраняем списанную ставку
         requestAnimationFrame(loop);
     }
 
     function loop(now) {
         if(!state.running) return;
 
-        // Фикс альтаба: считаем дельту времени между кадрами
         const deltaTime = (now - state.lastFrameTime) / 1000;
         state.lastFrameTime = now;
         
-        // Ограничиваем шаг времени (если альтабнулись, deltaTime будет огромным, мы его режем)
         const cappedDelta = Math.min(deltaTime, 0.1); 
         state.elapsedTime += cappedDelta;
 
         const currentSec = state.elapsedTime;
         let newPrice = 1 + (0.05 * currentSec) + (Math.pow(currentSec, 2.5) * 0.01);
         
-        // Генерация свечей по времени игры
         if (state.candles.length === 0 || currentSec > state.candles.length * 0.4) {
             const open = state.lastPrice;
             const close = newPrice + (Math.random() * 0.08 - 0.04);
@@ -307,6 +331,7 @@ function loadGame() {
         document.getElementById('snd-win').play(); spawnEmoji('🤑');
         document.getElementById('pnl-status').innerText = "PROFIT SECURED! 💰";
         updateUI();
+        saveGame(); // Сохраняем после выигрыша
     }
 
     function crash() {
@@ -318,6 +343,7 @@ function loadGame() {
         document.getElementById('profit-sol-display').innerText = "RUGGED 0.00";
         document.getElementById('profit-perc').innerText = "-100%";
         document.getElementById('pnl-status').innerText = "REKT! 📉";
+        saveGame(); // Сохраняем после проигрыша (баланс уже уменьшен при старте)
         setTimeout(reset, 2500);
     }
     
