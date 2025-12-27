@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solana Trader Simulator</title>
+    <link rel="icon" href="https://cryptologos.cc/logos/solana-sol-logo.png" type="image/png">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root { --sol: #14F195; --pink: #ff71ce; --purple: #9945FF; --red: #ff4444; --bg: rgba(5,5,5,0.92); }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Press Start 2P', cursive; }
+        
+        body {
+            background: #000 url('https://i.pinimg.com/736x/0f/6f/2d/0f6f2dec718eb17e4a20e956dccfd195.jpg') no-repeat center center fixed;
+            background-size: cover; color: white; height: 100vh; overflow: hidden;
+        }
+
+        .main-grid { 
+            display: grid; grid-template-columns: 460px 1fr 460px; gap: 20px; 
+            padding: 20px; width: 100%; height: 100vh;
+        }
+
+        .panel { 
+            background: var(--bg); border: 2px solid rgba(255, 255, 255, 0.1); 
+            border-radius: 20px; padding: 25px; display: flex; flex-direction: column; 
+            backdrop-filter: blur(25px); height: calc(100vh - 40px);
+        }
+
+        /* ЛЕВАЯ ПАНЕЛЬ С НОВЫМ ФОНОМ */
+        .left-panel {
+            background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), 
+                        url('https://i.pinimg.com/736x/5b/9b/bc/5b9bbc07668441e4180cbd046979b99e.jpg') center/cover !important;
+        }
+
+        .scroll-v { flex: 1; overflow-y: auto; margin-bottom: 15px; scrollbar-width: none; }
+        .scroll-v::-webkit-scrollbar { display: none; }
+        .row { display: flex; justify-content: space-between; padding: 12px 0; font-size: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+
+        .balance-box {
+            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), 
+                        url('https://i.pinimg.com/736x/a6/ea/89/a6ea89aaa96e15628b860025c7ca14db.jpg') center/cover;
+            border: 3px solid var(--sol); border-radius: 20px; padding: 30px;
+            text-align: center; box-shadow: 0 0 30px rgba(20, 241, 149, 0.4);
+            margin-top: 10px; position: relative; overflow: hidden;
+        }
+
+        .twitter-btn {
+            display: block; margin-top: 20px; text-decoration: none; 
+            background: #1DA1F2; color: #fff; padding: 18px; border-radius: 15px;
+            font-size: 11px; text-align: center; animation: glowTwitter 2s infinite;
+        }
+        @keyframes glowTwitter { 0%, 100% { box-shadow: 0 0 5px #1DA1F2; } 50% { box-shadow: 0 0 25px #1DA1F2; } }
+
+        .chart-container { position: relative; flex: 1; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        #mult-val { position: absolute; top: 15%; left: 50%; transform: translateX(-50%); font-size: 85px; z-index: 5; text-shadow: 0 0 40px rgba(0,0,0,0.8); pointer-events: none; }
+        
+        .char-box { position: absolute; bottom: 20px; right: 20px; width: 160px; height: 160px; border: 4px solid var(--purple); border-radius: 20px; overflow: hidden; background: #000; box-shadow: 0 0 30px var(--purple); z-index: 10; }
+        #char-img { width: 100%; height: 100%; object-fit: cover; }
+
+        .pnl-anime-card {
+            width: 100%; height: 240px; border-radius: 20px; border: 4px solid var(--pink);
+            position: relative; overflow: hidden; margin-bottom: 15px; cursor: pointer;
+            background: url('https://i.pinimg.com/736x/ea/53/8e/ea538e822cd9fb24554320ae907ddf55.jpg') center/cover;
+        }
+        .pnl-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.6); display: flex; flex-direction: column; justify-content: center; align-items: center; }
+
+        .btn { padding: 22px; border: none; cursor: pointer; font-size: 12px; width: 100%; margin-bottom: 12px; border-radius: 15px; text-transform: uppercase; font-family: inherit; }
+        .btn-ape { background: var(--sol); color: #000; box-shadow: 0 6px 0 #0d9b61; }
+        .btn-cash { background: var(--pink); color: #fff; display: none; box-shadow: 0 6px 0 #b54a91; }
+
+        .upg-card { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border: 1px solid #444; margin-bottom: 10px; cursor: pointer; font-size: 8px; transition: 0.2s; }
+        .upg-card:hover { background: rgba(255,255,255,0.15); border-color: var(--sol); }
+        
+        .emoji-pop { position: fixed; font-size: 60px; pointer-events: none; z-index: 9999; animation: popUp 1.2s forwards; }
+        @keyframes popUp { 0% { transform: scale(0); opacity: 1; } 100% { transform: scale(2) translateY(-200px); opacity: 0; } }
+    </style>
+</head>
+<body>
+
+<input type="file" id="pnl-upload" style="display:none" accept="image/*">
+<audio id="bg-music" loop><source src="https://stream.zeno.fm/0r0xa792kwzuv" type="audio/mpeg"></audio>
+<audio id="snd-win"><source src="https://www.myinstants.com/media/sounds/ka-ching.mp3" type="audio/mpeg"></audio>
+<audio id="snd-lose"><source src="https://www.myinstants.com/media/sounds/erro.mp3" type="audio/mpeg"></audio>
+
+<div class="main-grid">
+    <div class="panel left-panel">
+        <p style="font-size:10px; color:var(--purple); margin-bottom:15px; position:relative; z-index:2;">🏆 TOP DEGENS 💎</p>
+        <div class="scroll-v" id="leaderboard" style="position:relative; z-index:2;"></div>
+        <p style="font-size:10px; color:var(--purple); margin:15px 0; position:relative; z-index:2;">⚡ LIVE FEED 🚀</p>
+        <div class="scroll-v" id="live-feed" style="position:relative; z-index:2;"></div>
+        <div class="balance-box">
+            <p style="font-size:10px; color: #fff; margin-bottom: 10px; position:relative; z-index:2;">MY WALLET 💸</p>
+            <p id="bal-text" style="font-size:32px; color:var(--sol); position:relative; z-index:2;">1.0000</p>
+        </div>
+        <a href="https://x.com/soltradersim" target="_blank" class="twitter-btn">FOLLOW @SOLTRADERSIM 𝕏</a>
+    </div>
+
+    <div class="panel" style="background:none; border:none; backdrop-filter:none;">
+        <div class="chart-container" id="chart-parent">
+            <div id="mult-val" style="color:var(--sol)">1.00x</div>
+            <canvas id="main-chart"></canvas>
+            <div class="char-box"><img src="https://i.pinimg.com/736x/73/ef/f9/73eff9693533405e8a901fdbbd11f79b.jpg" id="char-img"></div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="pnl-anime-card" id="pnl-bg-div" onclick="shareTrade()">
+            <div class="pnl-overlay">
+                <p id="pnl-status" style="font-size:9px; color:var(--sol); margin-bottom:15px;">WAITING SIGNAL... 📡</p>
+                <h2 id="profit-sol-display" style="color:#fff;">+0.0000 SOL</h2>
+                <p id="profit-perc" style="color:var(--pink);">+0%</p>
+            </div>
+        </div>
+        <div style="display:flex; gap:10px; margin-bottom:15px;">
+            <button class="btn" style="padding:15px; font-size:9px; border:2px solid var(--pink); background:rgba(255,113,206,0.1); color:#fff;" onclick="document.getElementById('pnl-upload').click()">🖼 CHANGE ART</button>
+            <button class="btn" style="padding:15px; font-size:9px; border:2px solid var(--sol); background:rgba(20,241,149,0.1); color:#fff;" onclick="toggleMusic()">🎵 MUSIC</button>
+        </div>
+        <div style="background:#000; border:3px solid var(--sol); border-radius:15px; padding:15px; margin-bottom:15px;">
+            <input type="number" id="bet-input" value="0.1" step="0.1" style="background:none; border:none; color:var(--sol); width:100%; text-align:center; font-family:inherit; font-size:20px; outline:none;">
+        </div>
+        <button id="btn-ape" class="btn btn-ape">APE IN 🚀</button>
+        <button id="btn-cash" class="btn btn-cash">TAKE PROFIT 💰</button>
+        
+        <p style="font-size:9px; color:var(--purple); margin:10px 0;">STAKING YIELD 🥩</p>
+        <div class="scroll-v" id="upg-list" style="max-height:110px;"></div>
+        
+        <p style="font-size:9px; color:var(--purple); margin:10px 0;">RELOCATION 🏠</p>
+        <div class="scroll-v" id="estate-list" style="max-height:110px;"></div>
+    </div>
+</div>
+
+<script>
+
+// Функция для сохранения данных
+function saveGame() {
+    const dataToSave = {
+        bal: state.bal,
+        yield: state.yield,
+        user: state.user
+    };
+    localStorage.setItem('soltrader_save', JSON.stringify(dataToSave));
+}
+
+// Функция для загрузки данных
+function loadGame() {
+    const savedData = localStorage.getItem('soltrader_save');
+    if (savedData) {
+        const parsed = JSON.parse(savedData);
+        state.bal = parsed.bal;
+        state.yield = parsed.yield;
+        state.user = parsed.user;
+        updateUI();
+    }
+}
+    const state = { 
+        bal: 1.0, yield: 0, bet: 0.1, running: false, cashed: false, 
+        candles: [], crashAt: 0, lastPrice: 1, 
+        elapsedTime: 0, lastFrameTime: 0 // Для фикса альтаба
+    };
+    
+    const degens = [{n:"Bandit", v:"118.3"}, {n:"Cented", v:"114.0"}, {n:"Cupsey", v:"75.4"}, {n:"Pain", v:"36.4"}, {n:"Casino", v:"34.1"}, {n:"Jijo", v:"30.6"}];
+    const upgs = [
+        {n:"Stable Solana", c:0.2, p:0.0002},
+        {n:"Solana Node", c:1.5, p:0.002},
+        {n:"MEV Bot v2", c:5.0, p:0.01},
+        {n:"Liquid Staking", c:15.0, p:0.05}
+    ];
+    const estates = [
+        {n:"Neon Penthouse", c:5.0, i:"https://media.discordapp.net/attachments/1375963470800883822/1452064279770566727/1_ava_for_game.png?ex=694873be&is=6947223e&hm=d3df7759d2b3072c6c358c88dcdd2f70f2f91ce1a695d1586e608cfd1bb3f280&=&format=webp&quality=lossless"},
+        {n:"Solana Villa", c:12.0, i:"https://i.pinimg.com/736x/ea/53/8e/ea538e822cd9fb24554320ae907ddf55.jpg"}
+    ];
+
+    window.onload = () => {
+        const lb = document.getElementById('leaderboard');
+        degens.forEach(d => lb.innerHTML += `<div class="row"><span style="color:var(--pink)">${d.n}</span><span style="color:var(--sol)">+${d.v} SOL</span></div>`);
+        
+        const ul = document.getElementById('upg-list');
+        upgs.forEach(u => {
+            const d = document.createElement('div'); d.className = 'upg-card';
+            d.innerHTML = `<div>${u.n}</div><div style="color:var(--sol); margin-top:5px;">Cost: ${u.c} SOL (+${u.p}/s)</div>`;
+            d.onclick = () => { if(state.bal >= u.c) { state.bal -= u.c; state.yield += u.p; updateUI(); } };
+            ul.appendChild(d);
+        });
+
+        const el = document.getElementById('estate-list');
+        estates.forEach(e => {
+            const d = document.createElement('div'); d.className = 'upg-card';
+            d.innerHTML = `<div>${e.n}</div><div style="color:var(--pink); margin-top:5px;">Cost: ${e.c} SOL</div>`;
+            d.onclick = () => { if(state.bal >= e.c) { state.bal -= e.c; document.getElementById('char-img').src = e.i; updateUI(); } };
+            el.appendChild(d);
+        });
+
+        document.getElementById('pnl-upload').onchange = (e) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => { document.getElementById('pnl-bg-div').style.backgroundImage = `url(${ev.target.result})`; };
+            reader.readAsDataURL(e.target.files[0]);
+        };
+
+        setInterval(updateFeed, 2000);
+        setInterval(() => { if(state.yield > 0) { state.bal += state.yield; updateUI(); } }, 1000);
+        document.getElementById('btn-ape').onclick = start;
+        document.getElementById('btn-cash').onclick = cash;
+        window.onresize = resize; resize();
+        draw(); 
+    };
+
+    function start() {
+        const b = parseFloat(document.getElementById('bet-input').value);
+        if(state.bal < b || state.running || b <= 0) return;
+        state.bet = b; state.bal -= b; state.running = true; state.cashed = false;
+        state.candles = []; state.lastPrice = 1; 
+        state.elapsedTime = 0; state.lastFrameTime = performance.now(); // Сброс времени
+        state.crashAt = (1.1 + Math.pow(Math.random()*4, 2.1)).toFixed(2);
+        document.getElementById('btn-ape').style.display = 'none';
+        document.getElementById('btn-cash').style.display = 'block';
+        document.getElementById('pnl-status').innerText = "LIVE TRADING... 📈";
+        requestAnimationFrame(loop);
+    }
+
+    function loop(now) {
+        if(!state.running) return;
+
+        // Фикс альтаба: считаем дельту времени между кадрами
+        const deltaTime = (now - state.lastFrameTime) / 1000;
+        state.lastFrameTime = now;
+        
+        // Ограничиваем шаг времени (если альтабнулись, deltaTime будет огромным, мы его режем)
+        const cappedDelta = Math.min(deltaTime, 0.1); 
+        state.elapsedTime += cappedDelta;
+
+        const currentSec = state.elapsedTime;
+        let newPrice = 1 + (0.05 * currentSec) + (Math.pow(currentSec, 2.5) * 0.01);
+        
+        // Генерация свечей по времени игры
+        if (state.candles.length === 0 || currentSec > state.candles.length * 0.4) {
+            const open = state.lastPrice;
+            const close = newPrice + (Math.random() * 0.08 - 0.04);
+            state.candles.push({ open, close, high: Math.max(open, close) + 0.05, low: Math.min(open, close) - 0.05 });
+            state.lastPrice = close;
+        }
+
+        const mEl = document.getElementById('mult-val');
+        mEl.innerText = newPrice.toFixed(2) + 'x';
+        mEl.style.color = state.cashed ? "var(--purple)" : "var(--sol)";
+
+        if(!state.cashed) {
+            document.getElementById('profit-sol-display').innerText = "+" + (state.bet * (newPrice - 1)).toFixed(4) + " SOL";
+            document.getElementById('profit-perc').innerText = "+" + ((newPrice - 1)*100).toFixed(0) + "%";
+        }
+
+        if(newPrice >= state.crashAt) crash(); else { draw(); requestAnimationFrame(loop); }
+    }
+
+    function draw() {
+        const c = document.getElementById('main-chart'); const ctx = c.getContext('2d');
+        ctx.clearRect(0,0,c.width,c.height);
+        if (state.candles.length === 0) return;
+
+        const p = 60; 
+        const w = c.width - p * 2;
+        const h = c.height - p * 2;
+
+        const allPrices = state.candles.flatMap(can => [can.high, can.low]);
+        const minVal = Math.min(1, ...allPrices);
+        const maxVal = Math.max(2, ...allPrices) * 1.1; 
+        const range = maxVal - minVal;
+
+        const visibleCandles = Math.max(20, state.candles.length);
+        const candleW = w / visibleCandles;
+        const spacing = candleW * 0.2;
+        const actualW = candleW - spacing;
+
+        state.candles.forEach((can, i) => {
+            const x = p + i * candleW;
+            const getY = (val) => c.height - p - ((val - minVal) / range) * h;
+            const yOpen = getY(can.open);
+            const yClose = getY(can.close);
+            const yHigh = getY(can.high);
+            const yLow = getY(can.low);
+
+            const color = can.close >= can.open ? '#14F195' : '#ff4444';
+            ctx.shadowBlur = 10; ctx.shadowColor = color;
+            ctx.strokeStyle = color; ctx.lineWidth = 2;
+            ctx.beginPath(); 
+            ctx.moveTo(x + actualW/2, yHigh); 
+            ctx.lineTo(x + actualW/2, yLow); 
+            ctx.stroke();
+            ctx.fillStyle = color;
+            ctx.fillRect(x, Math.min(yOpen, yClose), actualW, Math.abs(yOpen - yClose) + 2);
+        });
+        ctx.shadowBlur = 0;
+    }
+
+    function spawnEmoji(e) {
+        for(let i=0; i<8; i++) {
+            const el = document.createElement('div'); el.className = 'emoji-pop';
+            el.innerText = e; el.style.left = (Math.random()*80+10)+'%'; el.style.top = '60%';
+            document.body.appendChild(el); setTimeout(() => el.remove(), 1200);
+        }
+    }
+
+    function cash() {
+        if(!state.running || state.cashed) return;
+        state.cashed = true;
+        const currentMult = parseFloat(document.getElementById('mult-val').innerText);
+        state.bal += (state.bet * currentMult);
+        document.getElementById('snd-win').play(); spawnEmoji('🤑');
+        document.getElementById('pnl-status').innerText = "PROFIT SECURED! 💰";
+        updateUI();
+    }
+
+    function crash() {
+        state.running = false; 
+        document.getElementById('snd-lose').play(); spawnEmoji('💀');
+        const last = state.candles[state.candles.length-1];
+        state.candles.push({ open: last.close, close: 1, high: last.close, low: 0.5 });
+        draw();
+        document.getElementById('profit-sol-display').innerText = "RUGGED 0.00";
+        document.getElementById('profit-perc').innerText = "-100%";
+        document.getElementById('pnl-status').innerText = "REKT! 📉";
+        setTimeout(reset, 2500);
+    }
+    
+    function reset() {
+        document.getElementById('btn-ape').style.display = 'block';
+        document.getElementById('btn-cash').style.display = 'none';
+        document.getElementById('mult-val').innerText = "1.00x";
+        state.candles = [];
+        draw();
+        updateUI();
+    }
+
+    function shareTrade() {
+        const profit = document.getElementById('profit-sol-display').innerText;
+        const currentArt = window.getComputedStyle(document.getElementById('pnl-bg-div')).backgroundImage.slice(4, -1).replace(/"/g, "");
+        const win = window.open("", "_blank", "width=1200,height=900");
+        win.document.write(`
+            <body style="background:#000; margin:0; overflow:hidden;">
+                <div style="width:100vw; height:100vh; background: url('${currentArt}') center/cover no-repeat; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family: sans-serif;">
+                    <div style="position:absolute; inset:0; background:rgba(0,0,0,0.5);"></div>
+                    <div style="z-index:10; text-align:center;">
+                        <h1 style="color:#ff71ce; font-size:40px; text-shadow: 0 0 20px #000;">SOLANA TRADER SIMULATOR</h1>
+                        <div style="background:rgba(0,0,0,0.8); border:5px solid #14F195; padding:60px; border-radius:30px; margin-top:30px; box-shadow: 0 0 100px #14F195;">
+                            <p style="color:#fff; font-size:24px;">PROFIT:</p>
+                            <h2 style="font-size:120px; color:#14F195; margin:10px 0;">${profit} SOL</h2>
+                        </div>
+                        <a href="https://twitter.com/intent/tweet?text=Printed ${profit} SOL on @soltradersim!" target="_blank" style="display:inline-block; margin-top:40px; background:#1DA1F2; color:#fff; padding:25px 50px; border-radius:50px; text-decoration:none; font-weight:bold; font-size:24px;">SHARE ON 𝕏</a>
+                    </div>
+                </div>
+            </body>
+        `);
+    }
+
+    function updateFeed() {
+        const f = document.getElementById('live-feed');
+        const names = ["Bandit", "Cupsey", "Satoshi_NAK", "Sol_Whale", "Degen_Bot"];
+        const n = names[Math.floor(Math.random()*names.length)];
+        const win = Math.random() > 0.4;
+        const div = document.createElement('div'); div.className = 'row';
+        div.innerHTML = `<span>${n}</span><span style="color:${win ? 'var(--sol)' : '#ff4444'}">${win ? (Math.random()*2+1).toFixed(2)+'x' : 'REKT 💀'}</span>`;
+        f.prepend(div); if(f.childNodes.length > 8) f.lastChild.remove();
+    }
+
+    function updateUI() { document.getElementById('bal-text').innerText = state.bal.toFixed(4); }
+    function toggleMusic() { const m = document.getElementById('bg-music'); m.paused ? m.play() : m.pause(); }
+    function resize() { 
+        const c = document.getElementById('main-chart'); 
+        const parent = document.getElementById('chart-parent');
+        if (parent) {
+            c.width = parent.clientWidth; 
+            c.height = parent.clientHeight; 
+            draw(); 
+        }
+    }
+</script>
+</body>
+</html>
