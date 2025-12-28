@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solana Trader Simulator</title>
+    <title>Solana Trading Simulator</title>
     <link rel="icon" href="https://cryptologos.cc/logos/solana-sol-logo.png" type="image/png">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
@@ -11,8 +11,12 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Press Start 2P', cursive; }
         
         body {
-            background: #000 url('https://i.pinimg.com/736x/0f/6f/2d/0f6f2dec718eb17e4a20e956dccfd195.jpg') no-repeat center center fixed;
-            background-size: cover; color: white; height: 100vh; overflow: hidden;
+            /* ОБНОВЛЕННАЯ ССЫЛКА НА ФОН */
+            background: #000 url('https://i.pinimg.com/736x/38/85/b9/3885b9c1d283ed9e24b27e4255524b99.jpg') no-repeat center center fixed;
+            background-size: cover; 
+            color: white; 
+            height: 100vh; 
+            overflow: hidden;
         }
 
         .main-grid { 
@@ -135,17 +139,15 @@
         elapsedTime: 0, lastFrameTime: 0
     };
 
-    // Функция для сохранения данных
     function saveGame() {
         const dataToSave = {
             bal: state.bal,
             yield: state.yield,
-            charImg: document.getElementById('char-img').src // Сохраняем картинку персонажа
+            charImg: document.getElementById('char-img').src 
         };
         localStorage.setItem('soltrader_save', JSON.stringify(dataToSave));
     }
 
-    // Функция для загрузки данных
     function loadGame() {
         const savedData = localStorage.getItem('soltrader_save');
         if (savedData) {
@@ -170,7 +172,7 @@
     ];
 
     window.onload = () => {
-        loadGame(); // Загружаем прогресс при открытии страницы
+        loadGame();
 
         const lb = document.getElementById('leaderboard');
         degens.forEach(d => lb.innerHTML += `<div class="row"><span style="color:var(--pink)">${d.n}</span><span style="color:var(--sol)">+${d.v} SOL</span></div>`);
@@ -184,7 +186,7 @@
                     state.bal -= u.c; 
                     state.yield += u.p; 
                     updateUI(); 
-                    saveGame(); // Сохраняем после покупки
+                    saveGame(); 
                 } 
             };
             ul.appendChild(d);
@@ -199,7 +201,7 @@
                     state.bal -= e.c; 
                     document.getElementById('char-img').src = e.i; 
                     updateUI(); 
-                    saveGame(); // Сохраняем после покупки жилья
+                    saveGame(); 
                 } 
             };
             el.appendChild(d);
@@ -215,12 +217,11 @@
 
         setInterval(updateFeed, 2000);
         
-        // Интервал пассивного дохода и авто-сохранения
         setInterval(() => { 
             if(state.yield > 0) { 
                 state.bal += state.yield; 
                 updateUI(); 
-                saveGame(); // Сохраняем баланс каждую секунду
+                saveGame(); 
             } 
         }, 1000);
 
@@ -240,7 +241,7 @@
         document.getElementById('btn-ape').style.display = 'none';
         document.getElementById('btn-cash').style.display = 'block';
         document.getElementById('pnl-status').innerText = "LIVE TRADING... 📈";
-        saveGame(); // Сохраняем списанную ставку
+        saveGame(); 
         requestAnimationFrame(loop);
     }
 
@@ -331,7 +332,7 @@
         document.getElementById('snd-win').play(); spawnEmoji('🤑');
         document.getElementById('pnl-status').innerText = "PROFIT SECURED! 💰";
         updateUI();
-        saveGame(); // Сохраняем после выигрыша
+        saveGame(); 
     }
 
     function crash() {
@@ -343,7 +344,7 @@
         document.getElementById('profit-sol-display').innerText = "RUGGED 0.00";
         document.getElementById('profit-perc').innerText = "-100%";
         document.getElementById('pnl-status').innerText = "REKT! 📉";
-        saveGame(); // Сохраняем после проигрыша (баланс уже уменьшен при старте)
+        saveGame(); 
         setTimeout(reset, 2500);
     }
     
@@ -365,7 +366,7 @@
                 <div style="width:100vw; height:100vh; background: url('${currentArt}') center/cover no-repeat; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family: sans-serif;">
                     <div style="position:absolute; inset:0; background:rgba(0,0,0,0.5);"></div>
                     <div style="z-index:10; text-align:center;">
-                        <h1 style="color:#ff71ce; font-size:40px; text-shadow: 0 0 20px #000;">SOLANA TRADER SIMULATOR</h1>
+                        <h1 style="color:#ff71ce; font-size:40px; text-shadow: 0 0 20px #000;">SOLANA TRADING SIMULATOR</h1>
                         <div style="background:rgba(0,0,0,0.8); border:5px solid #14F195; padding:60px; border-radius:30px; margin-top:30px; box-shadow: 0 0 100px #14F195;">
                             <p style="color:#fff; font-size:24px;">PROFIT:</p>
                             <h2 style="font-size:120px; color:#14F195; margin:10px 0;">${profit} SOL</h2>
